@@ -13,6 +13,7 @@
 *.png
 *.twbx
 *.pptx
+*.gif
 
 #nothing from these folders
 GIS/*
