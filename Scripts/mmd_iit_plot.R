@@ -4,7 +4,7 @@ library(ggrepel)
 
 si_palettes$moody_blues %>% show_col()
 
-df_filepath <- "~/Github/MSD/msd_fy21_q2_clean_psnu.txt"
+df_filepath <- "~/MERDATA/msd_fy21_q3_preclean_psnu.txt"
 df<- read_msd(df_filepath)
 
 #Munge MMD data
@@ -122,21 +122,22 @@ df_mmd_iit %>%
   annotate("rect", xmin = median, xmax = Inf, ymin = target_iit, ymax = -Inf, fill= "#bfddff", alpha=.4) + 
   annotate("rect", xmin = median, xmax = -Inf, ymin = Inf, ymax = target_iit, fill= "#ffb5ba", alpha=.4) + 
   geom_point(aes(size=qtr1_TX_CURR), shape=21, alpha=.6, fill="#002065", color=grey80k, stroke=1)+
+  #geom_smooth(aes(iit, value), method='lm', formula= y~x)+
   geom_text_repel(aes(label=operatingunit), point.size=4, size=10/.pt, color="#595959",family="Source Sans Pro")+
   geom_hline(yintercept=target_iit, color=grey90k, linetype="dotted")+
   geom_vline(xintercept=median, color=grey90k, linetype="dotted")+
-  geom_vline(xintercept=target_mmd, color=grey60k, linetype="dotted")+
+  #geom_vline(xintercept=target_mmd, color=grey60k, linetype="dotted")+
   scale_x_continuous(label=percent)+
   scale_y_continuous(labels = scales::percent_format(accuracy = 1))+
   si_style_nolines()+
   labs(x = "3+ MMD", y = "IIT",
-       title = "INTERRUPTIONS IN TREATMENT AND 3+ MMD LEVELS, FY21 Q2") +
+       title = "INTERRUPTIONS IN TREATMENT AND 3+ MMD LEVELS, FY21 Q3") +
   theme(legend.position="none")
 
-ggsave("Images/IIT_3MMD_comparison.pdf", device = cairo_pdf,
-       height = 7, width = 8, units = "in")
+# ggsave("Images/IIT_3MMD_comparison_q3.pdf", device = cairo_pdf,
+#        height = 7, width = 8, units = "in")
 
-ggsave("Images/IIT_3MMD_comparison.png",
+ggsave("Images/IIT_3MMD_comparison_q3.png",
        height = 7, width = 8, units="in")
 
 #############6 MMD
@@ -165,18 +166,18 @@ df_6mmd_iit %>%
   geom_text_repel(aes(label=operatingunit), point.size=4, size=10/.pt, color="#595959",family="Source Sans Pro")+
   geom_hline(yintercept=target_iit, color=grey90k, linetype="dotted")+
   geom_vline(xintercept=median6, color=grey90k, linetype="dotted")+
-  geom_vline(xintercept=target_6mmd, color=grey60k, linetype="dotted")+
+  #geom_vline(xintercept=target_6mmd, color=grey60k, linetype="dotted")+
   scale_x_continuous(label=percent)+
   scale_y_continuous(labels = scales::percent_format(accuracy = 1))+
   si_style_nolines()+
   labs(x = "6+ MMD", y = "IIT",
-       title = "INTERRUPTIONS IN TREATMENT AND 6+ MMD LEVELS, FY21 Q2") +
+       title = "INTERRUPTIONS IN TREATMENT AND 6+ MMD LEVELS, FY21 Q3") +
   theme(legend.position="none")
 
-ggsave("Images/IIT_6MMD_comparison.pdf", device = cairo_pdf,
-       height = 7, width = 8, units = "in")
+# ggsave("Images/IIT_6MMD_comparison.pdf", device = cairo_pdf,
+#        height = 7, width = 8, units = "in")
 
-ggsave("Images/IIT_6MMD_comparison.png",
+ggsave("Images/IIT_6MMD_comparison_q3.png",
        height = 7, width = 8, units="in")
 
 si_palettes$old_roses %>% show_col()

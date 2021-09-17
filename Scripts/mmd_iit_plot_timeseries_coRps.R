@@ -7,7 +7,6 @@ library(gganimate)
 library(glue)
 library(dplyr)
 
-si_palettes$moody_blues %>% show_col()
 
 df_filepath <- "~/MERDATA/msd_fy21_q3_preclean_psnu.txt"
 df<- read_msd(df_filepath)
@@ -91,7 +90,6 @@ df_mld <- df %>%
   mutate(quarter=str_replace(quarter, "q", "qtr"),
          indicator=str_replace(indicator, "iit", "iit_d")) %>%
   rename(mld="value")
-
 
 
 #Join dfs
