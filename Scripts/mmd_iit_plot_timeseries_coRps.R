@@ -1,14 +1,7 @@
 #Purpose: Create visualization using ggplot comparing performance in MMD and IIT
-install.packages("ggrepel")
-install.packages("gganimate")
-library(gifski)
-library(ggrepel)
-library(gganimate)
-library(glue)
-library(dplyr)
 
-
-df_filepath <- "~/MERDATA/msd_fy21_q3_preclean_psnu.txt"
+# df_filepath <- "~/MERDATA/msd_fy21_q3_preclean_psnu.txt"
+df_filepath <- "C:/Users/jstephens/Documents/MSD/MER_Structured_Datasets_PSNU_IM_FY19-22_20210917_v2_1_FY21Q3c/MER_Structured_Datasets_PSNU_IM_FY19-22_20210917_v2_1.txt"
 df<- read_msd(df_filepath)
 
 #Munge MMD data for Multiple Quarters
@@ -55,9 +48,8 @@ df_tx_curr<-df %>%
   pivot_wider(names_from=otherdisaggregate, names_sep="_", values_from=value) %>% 
   ungroup() %>%
   mutate(period=paste(fiscal_year, quarter)) %>%
-  rename("TX_CURR"="NA") %>%
+   rename("TX_CURR"="NA") %>%
   filter(TX_CURR>0)
-
 
 #Munge TX_ML Numerator
 df_ml <- df %>% 
@@ -85,7 +77,7 @@ df_mld <- df %>%
          q4.iit_d=qtr3.TX_CURR+qtr4.TX_NEW,
          q1.iit_d=qtr1.TX_CURR+qtr1.TX_NEW,) %>%
   select(q1.iit_d, q2.iit_d, q3.iit_d, q4.iit_d, qtr4.TX_CURR, operatingunit, fiscal_year) %>% 
-  pivot_longer(c(q1.iit_d, q2.iit_d, q3.iit_d, q4.iit_d, qtr4.TX_CURR), names_to="quarter") %>%
+  pivot_longer(c(q1.iit_d, q2.iit_d, q3.iit_d, q4.iit_d, qtr4.TX_CURR), names_to="quarter")%>%
   separate(quarter, c("quarter", "indicator")) %>%
   mutate(quarter=str_replace(quarter, "q", "qtr"),
          indicator=str_replace(indicator, "iit", "iit_d")) %>%
@@ -95,11 +87,14 @@ df_mld <- df %>%
 #Join dfs
 
 #3+ MMD
+
+#1st join IIT
 df2 <- df_mld %>% 
   left_join(df_ml, df_mld, by=c("operatingunit"="operatingunit", "quarter"="quarter", "fiscal_year"="fiscal_year")) %>%  
   mutate(val_iit=value/mld) %>%
   select(operatingunit, fiscal_year, quarter, val_iit, indicator)
 
+#this looks like all mmd, not just 3mmd (possible naming error)
 df_3mmd<-df1 %>%
   group_by(operatingunit, quarter, fiscal_year) %>%
   summarise(across(c(value), sum, na.rm=TRUE))
@@ -113,8 +108,10 @@ df_final<-left_join(df3, df_tx_curr, by=c("operatingunit"="operatingunit", "quar
   rename(
     "iit"=val_iit,
     "three_mmd"=value) 
+# ^ again, i believe this is all mmd, not just 3mmd because no specification at df_3mmd group_by/summarize
 
 
+#values
 median<-median(df_final$three_mmd)
 target_mmd<-.9
 target_6mmd<-.5
@@ -155,3 +152,55 @@ u3mmd<-df_final%>%
 
 gif<-animate(u3mmd, renderer=gifski_renderer(), width=1000, height=650, res=92, fps=4)
 anim_save("iit_mmd_4fps_q3.gif")
+
+
+####
+
+u3mmd<-df_final%>%
+  filter(period %in% c("2020 qtr3", "2020 qtr4", "2021 qtr1", "2021 qtr2", "2021 qtr3")) %>%
+  mutate(operatingunit=recode(operatingunit,
+                              "Democratic Republic of the Congo" = "DRC",
+                              "Dominican Republic" = "DR",
+                              "Western Hemisphere Region" = "WHR"),
+         median=median(iit)) %>% 
+  #create the axis
+  ggplot(aes(three_mmd, iit, color=operatingunit))+
+  #color the quadrants
+  annotate("rect", xmin = Inf, xmax = median, ymin = Inf, ymax = target_iit, fill= grey20k, alpha=.3)  +
+  annotate("rect", xmin = -Inf, xmax = median, ymin = -Inf, ymax = target_iit , fill= grey20k, alpha=.3) +
+  annotate("rect", xmin = median, xmax = Inf, ymin = target_iit, ymax = -Inf, fill= "#bfddff", alpha=.4) +
+  annotate("rect", xmin = median, xmax = -Inf, ymin = Inf, ymax = target_iit, fill= "#ffb5ba", alpha=.4) +
+  #add points
+   geom_point(aes(size=TX_CURR), shape=21, alpha=.6, fill="#002065", color=grey80k, stroke=1)+
+  #label OU names
+    geom_text(aes(label=operatingunit),size=9/.pt, vjust=1.75, color="#595959",family="Source Sans Pro")+
+  #secondary option to label ou names - add lines to farther away pts?
+  # geom_text_repel(aes(label=operatingunit), seed=123, point.size=4, size=8/.pt, color="#595959",family="Source Sans Pro")+
+  #add horizontal line at target iit (.02 = 2%)
+  geom_hline(yintercept=target_iit, color=grey90k, linetype="dotted")+
+  #add vertical line at mmd median (also option to create line at median if desired)
+  geom_vline(xintercept=median, color=grey90k, linetype="dotted")+
+  #geom_vline(xintercept=target_mmd, color=grey60k, linetype="dotted")+
+ #format axis in percent (grey code archive of cody's - percent function not found)
+   scale_x_continuous(labels=scales::percent)+
+  # scale_x_continuous(label=percent)+
+    scale_y_continuous(labels = scales::percent_format(accuracy = 1), limits=c(NA, .1))+
+  #format background to remove gridlines
+  si_style_nolines()+
+  #prepare theme. remove legend, set fonts (some not shown until title added in)
+  theme(legend.position="none",
+        axis.title = element_text(size=16),
+        plot.title = element_text(size=20),
+        plot.subtitle = element_text(size=24, color="dark red"))+
+  #prep for gif, dots moving by period
+  transition_states(period, transition_length=2, state_length=1)+
+  #format label names and add title
+  labs(x = "3+ MMD", y = "IIT",
+       title = "INTERRUPTIONS IN TREATMENT AND 3+ MMD LEVELS", subtitle = "{closest_state}")
+
+
+gif<-animate(u3mmd, renderer=gifski_renderer(), width=1000, height=650, res=92, fps=4)
+anim_save("iit_mmd_4fps_q3.gif")
+
+
+

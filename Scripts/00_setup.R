@@ -1,0 +1,11 @@
+# install.packages("ggrepel")
+# install.packages("gganimate")
+library(gifski)
+library(ggrepel)
+library(gganimate)
+library(glue)
+library(dplyr)
+
+library(tidyverse)
+library(glitr)
+library(gophr)
