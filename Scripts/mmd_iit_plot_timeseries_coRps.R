@@ -1,7 +1,7 @@
 #Purpose: Create visualization using ggplot comparing performance in MMD and IIT
 
 # df_filepath <- "~/MERDATA/msd_fy21_q3_preclean_psnu.txt"
-df_filepath <- "C:/Users/jstephens/Documents/MSD/MER_Structured_Datasets_PSNU_IM_FY19-22_20210917_v2_1_FY21Q3c/MER_Structured_Datasets_PSNU_IM_FY19-22_20210917_v2_1.txt"
+df_filepath <- "C:/Users/jstephens/Documents/MSD/MER_Structured_Datasets_PSNU_IM_FY19-22_20210917_v2_1.txt"
 df<- read_msd(df_filepath)
 
 #Munge MMD data for Multiple Quarters
@@ -171,9 +171,56 @@ u3mmd<-df_final%>%
   annotate("rect", xmin = median, xmax = Inf, ymin = target_iit, ymax = -Inf, fill= "#bfddff", alpha=.4) +
   annotate("rect", xmin = median, xmax = -Inf, ymin = Inf, ymax = target_iit, fill= "#ffb5ba", alpha=.4) +
   #add points
+  geom_point(aes(size=TX_CURR), shape=21, alpha=.6, fill="#002065", color=grey80k, stroke=1)+
+  #label OU names
+  geom_text(aes(label=operatingunit),size=9/.pt, vjust=1.75, color="#595959",family="Source Sans Pro")+
+  #secondary option to label ou names - add lines to farther away pts?
+  # geom_text_repel(aes(label=operatingunit), seed=123, point.size=4, size=8/.pt, color="#595959",family="Source Sans Pro")+
+  #add horizontal line at target iit (.02 = 2%)
+  geom_hline(yintercept=target_iit, color=grey90k, linetype="dotted")+
+  #add vertical line at mmd median (also option to create line at median if desired)
+  geom_vline(xintercept=median, color=grey90k, linetype="dotted")+
+  #geom_vline(xintercept=target_mmd, color=grey60k, linetype="dotted")+
+  #format axis in percent (grey code archive of cody's - percent function not found)
+  scale_x_continuous(labels=scales::percent)+
+  # scale_x_continuous(label=percent)+
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1), limits=c(NA, .1))+
+  #format background to remove gridlines
+  si_style_nolines()+
+  #prepare theme. remove legend, set fonts (some not shown until title added in)
+  theme(legend.position="none",
+        axis.title = element_text(size=16),
+        plot.title = element_text(size=20),
+        plot.subtitle = element_text(size=24, color="dark red"))+
+  #prep for gif, dots moving by period
+  transition_states(period, transition_length=2, state_length=1)+
+  #format label names and add title
+  labs(x = "3+ MMD", y = "IIT",
+       title = "INTERRUPTIONS IN TREATMENT AND 3+ MMD LEVELS", subtitle = "{closest_state}")
+
+gif<-animate(u3mmd, renderer=gifski_renderer(), width=1000, height=650, res=92, fps=4)
+anim_save("iit_mmd_4fps_q3.gif")
+
+
+### create smaller version for SI Newsletter
+u3mmd_small<-df_final%>%
+  filter(period %in% c("2020 qtr3", "2020 qtr4", "2021 qtr1", "2021 qtr2", "2021 qtr3")) %>%
+  mutate(operatingunit=recode(operatingunit,
+                              "Democratic Republic of the Congo" = "DRC",
+                              "Dominican Republic" = "DR",
+                              "Western Hemisphere Region" = "WHR"),
+         median=median(iit)) %>% 
+  #create the axis
+  ggplot(aes(three_mmd, iit, color=operatingunit))+
+  #color the quadrants
+  annotate("rect", xmin = Inf, xmax = median, ymin = Inf, ymax = target_iit, fill= grey20k, alpha=.2)  +
+  annotate("rect", xmin = -Inf, xmax = median, ymin = -Inf, ymax = target_iit , fill= grey20k, alpha=.2) +
+  annotate("rect", xmin = median, xmax = Inf, ymin = target_iit, ymax = -Inf, fill= "#bfddff", alpha=.3) +
+  annotate("rect", xmin = median, xmax = -Inf, ymin = Inf, ymax = target_iit, fill= "#ffb5ba", alpha=.3) +
+  #add points
    geom_point(aes(size=TX_CURR), shape=21, alpha=.6, fill="#002065", color=grey80k, stroke=1)+
   #label OU names
-    geom_text(aes(label=operatingunit),size=9/.pt, vjust=1.75, color="#595959",family="Source Sans Pro")+
+    # geom_text(aes(label=operatingunit),size=8/.pt, vjust=1.75, color="#595959",family="Source Sans Pro")+
   #secondary option to label ou names - add lines to farther away pts?
   # geom_text_repel(aes(label=operatingunit), seed=123, point.size=4, size=8/.pt, color="#595959",family="Source Sans Pro")+
   #add horizontal line at target iit (.02 = 2%)
@@ -189,18 +236,22 @@ u3mmd<-df_final%>%
   si_style_nolines()+
   #prepare theme. remove legend, set fonts (some not shown until title added in)
   theme(legend.position="none",
-        axis.title = element_text(size=16),
-        plot.title = element_text(size=20),
-        plot.subtitle = element_text(size=24, color="dark red"))+
+        axis.text.x = element_text(size=10),
+        axis.text.y = element_text(size=10),
+        axis.title = element_text(size=10),
+        plot.title = element_text(size=12),
+        plot.subtitle = element_text(size=10, color="dark red"))+
   #prep for gif, dots moving by period
   transition_states(period, transition_length=2, state_length=1)+
   #format label names and add title
   labs(x = "3+ MMD", y = "IIT",
-       title = "INTERRUPTIONS IN TREATMENT AND 3+ MMD LEVELS", subtitle = "{closest_state}")
+       title = "INTERRUPTIONS IN TREATMENT AND 3+ MMD", subtitle = "{closest_state}")
 
 
-gif<-animate(u3mmd, renderer=gifski_renderer(), width=1000, height=650, res=92, fps=4)
-anim_save("iit_mmd_4fps_q3.gif")
+gif<-animate(u3mmd_small, renderer=gifski_renderer(), width=480, height=312, res=92, fps=4)
+gif_noname<-animate(u3mmd_small, renderer=gifski_renderer(), width=480, height=312, res=92, fps=4)
+
+anim_save("iit_mmd_4fps_q3_small.gif")
 
 
 
