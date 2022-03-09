@@ -1,15 +1,16 @@
 #Purpose: Create visualization using ggplot comparing performance in MMD and IIT
 
 # df_filepath <- "~/MERDATA/msd_fy21_q3_preclean_psnu.txt"
-df_filepath <- "C:/Users/jstephens/Documents/MSD/MER_Structured_Datasets_PSNU_IM_FY19-22_20210917_v2_1.txt"
+df_filepath <- "C:/Users/jstephens/Documents/MSD/MER_Structured_Datasets_PSNU_IM_FY19-22_20211112_v1_1_FY21Q4i/MER_Structured_Datasets_PSNU_IM_FY19-22_20211112_v1_1_FY21Q4i.txt"
 df<- read_msd(df_filepath)
+
+df<- resolve_knownissues(df, remove_cs = TRUE, store_excl = FALSE)
 
 #Munge MMD data for Multiple Quarters
 df1 <- df %>% 
   filter(indicator %in% (c("TX_CURR")),
          standardizeddisaggregate %in% c("Age/Sex/ARVDispense/HIVStatus", "Total Numerator"),
-         fiscal_year %in% (c("2020", "2021")),
-         operatingunit!="South Africa") %>% 
+         fiscal_year %in% (c("2020", "2021"))) %>% 
   mutate(
     otherdisaggregate = str_remove(
       otherdisaggregate, "ARV Dispensing Quantity - "),
@@ -40,8 +41,7 @@ df1 <- df %>%
 df_tx_curr<-df %>% 
   filter(indicator=="TX_CURR", 
          standardizeddisaggregate=="Total Numerator",
-         fiscal_year %in% (c("2020", "2021")),
-         operatingunit!="South Africa") %>%
+         fiscal_year %in% (c("2020", "2021"))) %>% 
   group_by(operatingunit, otherdisaggregate, fiscal_year) %>%
   summarise(across(c(qtr1, qtr2, qtr3, qtr4), sum, na.rm=TRUE)) %>%
   pivot_longer(c(qtr1, qtr2, qtr3, qtr4), names_to="quarter") %>%
@@ -120,48 +120,15 @@ target_iit<-.02
 
 #Build out plot
 
-u3mmd<-df_final%>%
-  filter(period %in% c("2020 qtr3", "2020 qtr4", "2021 qtr1", "2021 qtr2", "2021 qtr3")) %>%
-  mutate(operatingunit=recode(operatingunit,
-                              "Democratic Republic of the Congo" = "DRC",
-                              "Dominican Republic" = "DR",
-                              "Western Hemisphere Region" = "WHR"),
-         median=median(iit)) %>% 
-  ggplot(aes(three_mmd, iit, color=operatingunit))+
-  annotate("rect", xmin = Inf, xmax = median, ymin = Inf, ymax = target_iit, fill= grey20k, alpha=.3)  + 
-  annotate("rect", xmin = -Inf, xmax = median, ymin = -Inf, ymax = target_iit , fill= grey20k, alpha=.3) + 
-  annotate("rect", xmin = median, xmax = Inf, ymin = target_iit, ymax = -Inf, fill= "#bfddff", alpha=.4) + 
-  annotate("rect", xmin = median, xmax = -Inf, ymin = Inf, ymax = target_iit, fill= "#ffb5ba", alpha=.4) + 
-  geom_point(aes(size=TX_CURR), shape=21, alpha=.6, fill="#002065", color=grey80k, stroke=1)+
-  #geom_text_repel(aes(label=operatingunit), seed=123, point.size=4, size=8/.pt, color="#595959",family="Source Sans Pro")+
-  geom_text(aes(label=operatingunit),size=9/.pt, vjust=1.75, color="#595959",family="Source Sans Pro")+
-  geom_hline(yintercept=target_iit, color=grey90k, linetype="dotted")+
-  geom_vline(xintercept=median, color=grey90k, linetype="dotted")+
-  #geom_vline(xintercept=target_mmd, color=grey60k, linetype="dotted")+
-  scale_x_continuous(label=percent)+
-  scale_y_continuous(labels = scales::percent_format(accuracy = 1), limits=c(NA, .1))+
-  si_style_nolines()+
-  theme(legend.position="none",
-        axis.title = element_text(size=16),
-        plot.title = element_text(size=20),
-        plot.subtitle = element_text(size=24, color="dark red"))+
-  transition_states(period, transition_length=2, state_length=1)+
-  labs(x = "3+ MMD", y = "IIT",
-       title = "INTERRUPTIONS IN TREATMENT AND 3+ MMD LEVELS", subtitle = "{closest_state}")
-  
-
-gif<-animate(u3mmd, renderer=gifski_renderer(), width=1000, height=650, res=92, fps=4)
-anim_save("iit_mmd_4fps_q3.gif")
-
-
 ####
 
 u3mmd<-df_final%>%
-  filter(period %in% c("2020 qtr3", "2020 qtr4", "2021 qtr1", "2021 qtr2", "2021 qtr3")) %>%
+  filter(period %in% c("2020 qtr3", "2020 qtr4", "2021 qtr1", "2021 qtr2", "2021 qtr3", "2021 qtr4")) %>%
   mutate(operatingunit=recode(operatingunit,
                               "Democratic Republic of the Congo" = "DRC",
                               "Dominican Republic" = "DR",
-                              "Western Hemisphere Region" = "WHR"),
+                              "Western Hemisphere Region" = "WHR",
+                              "West Africa Region" = "WAR"),
          median=median(iit)) %>% 
   #create the axis
   ggplot(aes(three_mmd, iit, color=operatingunit))+
@@ -198,29 +165,34 @@ u3mmd<-df_final%>%
   labs(x = "3+ MMD", y = "IIT",
        title = "INTERRUPTIONS IN TREATMENT AND 3+ MMD LEVELS", subtitle = "{closest_state}")
 
+
 gif<-animate(u3mmd, renderer=gifski_renderer(), width=1000, height=650, res=92, fps=4)
-anim_save("iit_mmd_4fps_q3.gif")
+anim_save("iit_mmd_4fps_q4.gif")
+#create slower visuals
+gif<-animate(u3mmd, renderer=gifski_renderer(), width=1000, height=650, res=92, fps=2)
+anim_save("iit_mmd_2fps_q4.gif")
 
 
-### create smaller version for SI Newsletter
-u3mmd_small<-df_final%>%
-  filter(period %in% c("2020 qtr3", "2020 qtr4", "2021 qtr1", "2021 qtr2", "2021 qtr3")) %>%
+#create slow vis for only 4 qtrs
+u3mmd_4qtr<-df_final%>%
+  filter(period %in% c( "2021 qtr1", "2021 qtr2", "2021 qtr3", "2021 qtr4")) %>%
   mutate(operatingunit=recode(operatingunit,
                               "Democratic Republic of the Congo" = "DRC",
                               "Dominican Republic" = "DR",
-                              "Western Hemisphere Region" = "WHR"),
+                              "Western Hemisphere Region" = "WHR",
+                              "West Africa Region" = "WAR"),
          median=median(iit)) %>% 
   #create the axis
   ggplot(aes(three_mmd, iit, color=operatingunit))+
   #color the quadrants
-  annotate("rect", xmin = Inf, xmax = median, ymin = Inf, ymax = target_iit, fill= grey20k, alpha=.2)  +
-  annotate("rect", xmin = -Inf, xmax = median, ymin = -Inf, ymax = target_iit , fill= grey20k, alpha=.2) +
-  annotate("rect", xmin = median, xmax = Inf, ymin = target_iit, ymax = -Inf, fill= "#bfddff", alpha=.3) +
-  annotate("rect", xmin = median, xmax = -Inf, ymin = Inf, ymax = target_iit, fill= "#ffb5ba", alpha=.3) +
+  annotate("rect", xmin = Inf, xmax = median, ymin = Inf, ymax = target_iit, fill= grey20k, alpha=.3)  +
+  annotate("rect", xmin = -Inf, xmax = median, ymin = -Inf, ymax = target_iit , fill= grey20k, alpha=.3) +
+  annotate("rect", xmin = median, xmax = Inf, ymin = target_iit, ymax = -Inf, fill= "#bfddff", alpha=.4) +
+  annotate("rect", xmin = median, xmax = -Inf, ymin = Inf, ymax = target_iit, fill= "#ffb5ba", alpha=.4) +
   #add points
-   geom_point(aes(size=TX_CURR), shape=21, alpha=.6, fill="#002065", color=grey80k, stroke=1)+
+  geom_point(aes(size=TX_CURR), shape=21, alpha=.6, fill="#002065", color=grey80k, stroke=1)+
   #label OU names
-    # geom_text(aes(label=operatingunit),size=8/.pt, vjust=1.75, color="#595959",family="Source Sans Pro")+
+  geom_text(aes(label=operatingunit),size=9/.pt, vjust=1.75, color="#595959",family="Source Sans Pro")+
   #secondary option to label ou names - add lines to farther away pts?
   # geom_text_repel(aes(label=operatingunit), seed=123, point.size=4, size=8/.pt, color="#595959",family="Source Sans Pro")+
   #add horizontal line at target iit (.02 = 2%)
@@ -228,30 +200,75 @@ u3mmd_small<-df_final%>%
   #add vertical line at mmd median (also option to create line at median if desired)
   geom_vline(xintercept=median, color=grey90k, linetype="dotted")+
   #geom_vline(xintercept=target_mmd, color=grey60k, linetype="dotted")+
- #format axis in percent (grey code archive of cody's - percent function not found)
-   scale_x_continuous(labels=scales::percent)+
+  #format axis in percent (grey code archive of cody's - percent function not found)
+  scale_x_continuous(labels=scales::percent)+
   # scale_x_continuous(label=percent)+
-    scale_y_continuous(labels = scales::percent_format(accuracy = 1), limits=c(NA, .1))+
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1), limits=c(NA, .1))+
   #format background to remove gridlines
   si_style_nolines()+
   #prepare theme. remove legend, set fonts (some not shown until title added in)
   theme(legend.position="none",
-        axis.text.x = element_text(size=10),
-        axis.text.y = element_text(size=10),
-        axis.title = element_text(size=10),
-        plot.title = element_text(size=12),
-        plot.subtitle = element_text(size=10, color="dark red"))+
+        axis.title = element_text(size=16),
+        plot.title = element_text(size=20),
+        plot.subtitle = element_text(size=24, color="dark red"))+
   #prep for gif, dots moving by period
-  transition_states(period, transition_length=2, state_length=1)+
+  transition_states(period, transition_length=.5, state_length=2)+
   #format label names and add title
   labs(x = "3+ MMD", y = "IIT",
-       title = "INTERRUPTIONS IN TREATMENT AND 3+ MMD", subtitle = "{closest_state}")
+       title = "INTERRUPTIONS IN TREATMENT AND 3+ MMD LEVELS", subtitle = "{closest_state}")
 
+gif<-animate(u3mmd_4qtr, renderer=gifski_renderer(), width=1000, height=650, res=92, fps=2)
+anim_save("iit_mmd_2fps_fy22q4_4qtrs_.5trans_2length.gif")
+gif<-animate(u3mmd_4qtr, renderer=gifski_renderer(), width=1000, height=650, res=92, fps=2)
+anim_save("iit_mmd_2fps_fy22q4_4qtrs_1trans_2length.gif")
+gif<-animate(u3mmd_4qtr, renderer=gifski_renderer(), width=1000, height=650, res=92, fps=2)
+anim_save("iit_mmd_2fps_fy22q4_4qtrs_2trans_1length.gif")
+#too slow
+# gif<-animate(u3mmd_4qtr, renderer=gifski_renderer(), width=1000, height=650, res=92, fps=1)
+# anim_save("iit_mmd_1fps_fy22q4_4qtrs.gif")
 
-gif<-animate(u3mmd_small, renderer=gifski_renderer(), width=480, height=312, res=92, fps=4)
-gif_noname<-animate(u3mmd_small, renderer=gifski_renderer(), width=480, height=312, res=92, fps=4)
+###################################################################################3
 
-anim_save("iit_mmd_4fps_q3_small.gif")
-
-
-
+###create still visuals
+u3mmd_periods<-df_final%>%
+  filter(period %in% c("2021 qtr1", "2021 qtr2", "2021 qtr3", "2021 qtr4")) %>%
+  mutate(operatingunit=recode(operatingunit,
+                              "Democratic Republic of the Congo" = "DRC",
+                              "Dominican Republic" = "DR",
+                              "Western Hemisphere Region" = "WHR",
+                              "West Africa Region" = "WAR"),
+         median=median(iit)) %>% 
+  #create the axis
+  ggplot(aes(three_mmd, iit, color=operatingunit))+
+  #color the quadrants
+  annotate("rect", xmin = Inf, xmax = median, ymin = Inf, ymax = target_iit, fill= grey20k, alpha=.3)  +
+  annotate("rect", xmin = -Inf, xmax = median, ymin = -Inf, ymax = target_iit , fill= grey20k, alpha=.3) +
+  annotate("rect", xmin = median, xmax = Inf, ymin = target_iit, ymax = -Inf, fill= "#bfddff", alpha=.4) +
+  annotate("rect", xmin = median, xmax = -Inf, ymin = Inf, ymax = target_iit, fill= "#ffb5ba", alpha=.4) +
+  #add points
+  geom_point(aes(size=TX_CURR), shape=21, alpha=.6, fill="#002065", color=grey80k, stroke=1)+
+  #label OU names
+  geom_text(aes(label=operatingunit),size=6/.pt, vjust=1.75, color="#595959",family="Source Sans Pro")+
+  #secondary option to label ou names - add lines to farther away pts?
+  # geom_text_repel(aes(label=operatingunit), seed=123, point.size=4, size=8/.pt, color="#595959",family="Source Sans Pro")+
+  #add horizontal line at target iit (.02 = 2%)
+  geom_hline(yintercept=target_iit, color=grey90k, linetype="dotted")+
+  #add vertical line at mmd median (also option to create line at median if desired)
+  geom_vline(xintercept=median, color=grey90k, linetype="dotted")+
+  #geom_vline(xintercept=target_mmd, color=grey60k, linetype="dotted")+
+  #format axis in percent (grey code archive of cody's - percent function not found)
+  scale_x_continuous(labels=scales::percent)+
+  # scale_x_continuous(label=percent)+
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1), limits=c(NA, .1))+
+  #format background to remove gridlines
+  si_style_nolines()+
+  facet_wrap(~period)+
+  #prepare theme. remove legend, set fonts (some not shown until title added in)
+  theme(legend.position="none",
+        axis.title = element_text(size=16),
+        plot.title = element_text(size=20),
+        plot.subtitle = element_text(size=24, color="dark red"))+
+  #format label names and add title
+  labs(x = "3+ MMD", y = "IIT",
+       title = "INTERRUPTIONS IN TREATMENT AND 3+ MMD LEVELS")
+u3mmd_periods
